@@ -5,9 +5,11 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
+  "github.com/Azure/azure-container-networking/log"
 )
 
 func TestNewBaremetalSource(t *testing.T) {
+  log.Printf("baremetaltesting func testnewbaremetalsource");
 	options := make(map[string]interface{})
 	baremetal, _ := newBaremetalSource(options)
 
@@ -26,6 +28,7 @@ func TestNewBaremetalSource(t *testing.T) {
 }
 
 func TestGetSDNInterfaces(t *testing.T) {
+  log.Printf("baremetaltesting func testgetsdninterfaces");
 	const validFileName = "testfiles/masInterfaceConfig.json"
 	const invalidFileName = "baremetal_test.go"
 	const nonexistentFileName = "bad"
@@ -71,6 +74,7 @@ func TestGetSDNInterfaces(t *testing.T) {
 }
 
 func TestPopulateAddressSpace(t *testing.T) {
+  log.Printf("baremetaltesting func testpopulateaddressspace");
 	hardwareAddress0, _ := net.ParseMAC("00:00:00:00:00:00")
 	hardwareAddress1, _ := net.ParseMAC("11:11:11:11:11:11")
 	hardwareAddress2, _ := net.ParseMAC("00:0d:3a:6e:18:25")
@@ -146,6 +150,7 @@ func TestPopulateAddressSpace(t *testing.T) {
 }
 
 func TestPopulateAddressSpaceMultipleSDNInterfaces(t *testing.T) {
+  log.Printf("baremetaltesting func testpopulateAddressSpaceMultipleSDNInterfaces");
 	hardwareAddress0, _ := net.ParseMAC("00:00:00:00:00:00")
 	hardwareAddress1, _ := net.ParseMAC("11:11:11:11:11:11")
 	localInterfaces := []net.Interface{
