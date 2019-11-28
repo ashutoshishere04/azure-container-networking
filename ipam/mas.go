@@ -19,6 +19,7 @@ const (
 	defaultWindowsFilePath = `c:\k\interfaces.json`
 	windows                = "windows"
 	name                   = "MAS"
+	name2                  = "fileIpam"
 )
 
 // Microsoft Azure Stack IPAM configuration source.
@@ -27,6 +28,14 @@ type masSource struct {
 	sink       addressConfigSink
 	fileLoaded bool
 	filePath   string
+}
+
+// // fileIpam configuration source.
+type fileIpamSource struct {
+ 	name       string
+ 	sink       addressConfigSink
+ 	fileLoaded bool
+ 	filePath   string
 }
 
 // MAS host agent JSON object format.
@@ -65,14 +74,40 @@ func newMasSource(options map[string]interface{}) (*masSource, error) {
 	}, nil
 }
 
+// Creates the fileIpam source.
+func newFileIpamSource(options map[string]interface{}) (*masSource, error) {
+	var filePath string
+	if runtime.GOOS == windows {
+		filePath = defaultWindowsFilePath
+	} else {
+		filePath = defaultLinuxFilePath
+	}
+
+	return &fileIpamSource{
+		name: name2,
+		filePath: filePath,
+	}, nil
+}
+
 // Starts the MAS source.
 func (source *masSource) start(sink addressConfigSink) error {
 	source.sink = sink
 	return nil
 }
 
+// Starts the fileIpam source.
+func (source *fileIpamSource) start(sink addressConfigSink) error {
+	source.sink = sink
+	return nil
+}
+
 // Stops the MAS source.
 func (source *masSource) stop() {
+	source.sink = nil
+}
+
+// Stops the FileIpam source.
+func (source *fileIpamSource) stop() {
 	source.sink = nil
 }
 
@@ -119,6 +154,47 @@ func (source *masSource) refresh() error {
 	return nil
 }
 
+func (source *fileIpamSource) refresh() error {
+	if source == nil {
+		return errors.New("fileIpamSource is nil")
+	}
+
+	if source.fileLoaded {
+		return nil
+	}
+
+	// Query the list of local interfaces.
+	localInterfaces, err := net.Interfaces()
+	if err != nil {
+		return err
+	}
+
+	// Query the list of Azure Network Interfaces
+	sdnInterfaces, err := getSDNInterfaces(source.filePath)
+	if err != nil {
+		return err
+	}
+
+	// Configure the local default address space.
+	local, err := source.sink.newAddressSpace(LocalDefaultAddressSpaceId, LocalScope)
+	if err != nil {
+		return err
+	}
+
+	if err = populateAddressSpace(local, sdnInterfaces, localInterfaces); err != nil {
+		return err
+	}
+
+	// Set the local address space as active.
+	if err = source.sink.setAddressSpace(local); err != nil {
+		return err
+	}
+
+	log.Printf("[ipam] Address space successfully populated from config file")
+	source.fileLoaded = true
+
+	return nil
+}
 func getSDNInterfaces(fileLocation string) (*NetworkInterfaces, error) {
 	data, err := ioutil.ReadFile(fileLocation)
 	if err != nil {
