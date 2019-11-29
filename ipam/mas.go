@@ -75,7 +75,7 @@ func newMasSource(options map[string]interface{}) (*masSource, error) {
 }
 
 // Creates the fileIpam source.
-func newFileIpamSource(options map[string]interface{}) (*masSource, error) {
+func newFileIpamSource(options map[string]interface{}) (*fileIpamSource, error) {
 	var filePath string
 	if runtime.GOOS == windows {
 		filePath = defaultWindowsFilePath
