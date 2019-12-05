@@ -88,4 +88,8 @@ const (
 	// HTTP response header timeout
 	OptHttpResponseHeaderTimeout      = "http-response-header-timeout"
 	OptHttpResponseHeaderTimeoutAlias = "httprespheadertimeout"
+
+	// Store file location
+	OptStoreFileLocation      = "store-file-path"
+	OptStoreFileLocationAlias = "storefilepath"
 )
