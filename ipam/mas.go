@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/Azure/azure-container-networking/common"
 	"github.com/Azure/azure-container-networking/log"
 )
 
@@ -23,20 +24,20 @@ const (
 )
 
 // Microsoft Azure Stack IPAM configuration source.
-type masSource struct {
+type envSource struct {
 	name       string
 	sink       addressConfigSink
 	fileLoaded bool
 	filePath   string
 }
 
-// // fileIpam configuration source.
-type fileIpamSource struct {
- 	name       string
- 	sink       addressConfigSink
- 	fileLoaded bool
- 	filePath   string
-}
+// fileIpam configuration source.
+// type fileIpamSource struct {
+//  	name       string
+//  	sink       addressConfigSink
+//  	fileLoaded bool
+//  	filePath   string
+// }
 
 // MAS host agent JSON object format.
 type NetworkInterfaces struct {
@@ -60,7 +61,7 @@ type IPAddress struct {
 }
 
 // Creates the MAS source.
-func newMasSource(options map[string]interface{}) (*masSource, error) {
+func newMasSource(options map[string]interface{}) (*envSource, error) {
 	var filePath string
 	if runtime.GOOS == windows {
 		filePath = defaultWindowsFilePath
@@ -68,53 +69,62 @@ func newMasSource(options map[string]interface{}) (*masSource, error) {
 		filePath = defaultLinuxFilePath
 	}
 
-	return &masSource{
-		name: name,
-		filePath: filePath,
-	}, nil
-}
+	environment, _ := options[common.OptEnvironment].(string)
 
-// Creates the fileIpam source.
-func newFileIpamSource(options map[string]interface{}) (*fileIpamSource, error) {
-	var filePath string
-	if runtime.GOOS == windows {
-		filePath = defaultWindowsFilePath
+	if environment == common.OptEnvironmentMAS {
+		return &envSource{
+			name: name,
+			filePath: filePath,
+		}, nil
 	} else {
-		filePath = defaultLinuxFilePath
+		return &envSource{
+			name: name2,
+			filePath: filePath,
+		}, nil
 	}
-
-	return &fileIpamSource{
-		name: name2,
-		filePath: filePath,
-	}, nil
 }
+
+// // Creates the fileIpam source.
+// func newFileIpamSource(options map[string]interface{}) (*fileIpamSource, error) {
+// 	var filePath string
+// 	if runtime.GOOS == windows {
+// 		filePath = defaultWindowsFilePath
+// 	} else {
+// 		filePath = defaultLinuxFilePath
+// 	}
+//
+// 	return &fileIpamSource{
+// 		name: name2,
+// 		filePath: filePath,
+// 	}, nil
+// }
 
 // Starts the MAS source.
-func (source *masSource) start(sink addressConfigSink) error {
+func (source *envSource) start(sink addressConfigSink) error {
 	source.sink = sink
 	return nil
 }
 
-// Starts the fileIpam source.
-func (source *fileIpamSource) start(sink addressConfigSink) error {
-	source.sink = sink
-	return nil
-}
+// // Starts the fileIpam source.
+// func (source *envSource) start(sink addressConfigSink) error {
+// 	source.sink = sink
+// 	return nil
+// }
 
 // Stops the MAS source.
-func (source *masSource) stop() {
+func (source *envSource) stop() {
 	source.sink = nil
 }
 
-// Stops the FileIpam source.
-func (source *fileIpamSource) stop() {
-	source.sink = nil
-}
+// // Stops the FileIpam source.
+// func (source *envSource) stop() {
+// 	source.sink = nil
+// }
 
 // Refreshes configuration.
-func (source *masSource) refresh() error {
+func (source *envSource) refresh() error {
 	if source == nil {
-		return errors.New("masSource is nil")
+		return errors.New("envSource is nil")
 	}
 
 	if source.fileLoaded {
@@ -154,47 +164,48 @@ func (source *masSource) refresh() error {
 	return nil
 }
 
-func (source *fileIpamSource) refresh() error {
-	if source == nil {
-		return errors.New("fileIpamSource is nil")
-	}
+// func (source *envSource) refresh() error {
+// 	if source == nil {
+// 		return errors.New("fileIpamSource is nil")
+// 	}
+//
+// 	if source.fileLoaded {
+// 		return nil
+// 	}
+//
+// 	// Query the list of local interfaces.
+// 	localInterfaces, err := net.Interfaces()
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	// Query the list of Azure Network Interfaces
+// 	sdnInterfaces, err := getSDNInterfaces(source.filePath)
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	// Configure the local default address space.
+// 	local, err := source.sink.newAddressSpace(LocalDefaultAddressSpaceId, LocalScope)
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	if err = populateAddressSpace(local, sdnInterfaces, localInterfaces); err != nil {
+// 		return err
+// 	}
+//
+// 	// Set the local address space as active.
+// 	if err = source.sink.setAddressSpace(local); err != nil {
+// 		return err
+// 	}
+//
+// 	log.Printf("[ipam] Address space successfully populated from config file")
+// 	source.fileLoaded = true
+//
+// 	return nil
+// }
 
-	if source.fileLoaded {
-		return nil
-	}
-
-	// Query the list of local interfaces.
-	localInterfaces, err := net.Interfaces()
-	if err != nil {
-		return err
-	}
-
-	// Query the list of Azure Network Interfaces
-	sdnInterfaces, err := getSDNInterfaces(source.filePath)
-	if err != nil {
-		return err
-	}
-
-	// Configure the local default address space.
-	local, err := source.sink.newAddressSpace(LocalDefaultAddressSpaceId, LocalScope)
-	if err != nil {
-		return err
-	}
-
-	if err = populateAddressSpace(local, sdnInterfaces, localInterfaces); err != nil {
-		return err
-	}
-
-	// Set the local address space as active.
-	if err = source.sink.setAddressSpace(local); err != nil {
-		return err
-	}
-
-	log.Printf("[ipam] Address space successfully populated from config file")
-	source.fileLoaded = true
-
-	return nil
-}
 func getSDNInterfaces(fileLocation string) (*NetworkInterfaces, error) {
 	data, err := ioutil.ReadFile(fileLocation)
 	if err != nil {
