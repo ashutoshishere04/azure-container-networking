@@ -283,5 +283,5 @@ func TestPopulateAddressSpaceMultipleSDNInterfaces(t *testing.T) {
 
 	if pool.Priority != 1 {
 		t.Fatalf("Incorrect interface priority. expected: %d, actual %d", 1, pool.Priority)
-	}	
+	}
 }
