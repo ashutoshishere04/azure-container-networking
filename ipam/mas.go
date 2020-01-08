@@ -24,7 +24,7 @@ const (
 )
 
 // Microsoft Azure Stack IPAM configuration source.
-type envSource struct {
+type masSource struct {
 	name       string
 	sink       addressConfigSink
 	fileLoaded bool
@@ -53,7 +53,7 @@ type IPAddress struct {
 }
 
 // Creates the MAS source.
-func newMasSource(options map[string]interface{}) (*envSource, error) {
+func newMasSource(options map[string]interface{}) (*masSource, error) {
 	var filePath string
 	if runtime.GOOS == windows {
 		filePath = defaultWindowsFilePath
@@ -64,12 +64,12 @@ func newMasSource(options map[string]interface{}) (*envSource, error) {
 	environment, _ := options[common.OptEnvironment].(string)
 
 	if environment == common.OptEnvironmentMAS {
-		return &envSource{
+		return &masSource{
 			name: name,
 			filePath: filePath,
 		}, nil
 	} else {
-		return &envSource{
+		return &masSource{
 			name: name2,
 			filePath: filePath,
 		}, nil
@@ -77,20 +77,20 @@ func newMasSource(options map[string]interface{}) (*envSource, error) {
 }
 
 // Starts the MAS source.
-func (source *envSource) start(sink addressConfigSink) error {
+func (source *masSource) start(sink addressConfigSink) error {
 	source.sink = sink
 	return nil
 }
 
 // Stops the MAS source.
-func (source *envSource) stop() {
+func (source *masSource) stop() {
 	source.sink = nil
 }
 
 // Refreshes configuration.
-func (source *envSource) refresh() error {
+func (source *masSource) refresh() error {
 	if source == nil {
-		return errors.New("envSource is nil")
+		return errors.New("masSource is nil")
 	}
 
 	if source.fileLoaded {
