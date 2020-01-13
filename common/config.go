@@ -10,7 +10,7 @@ const (
 	OptEnvironmentAlias    = "e"
 	OptEnvironmentAzure    = "azure"
 	OptEnvironmentMAS      = "mas"
-	OptEnvironmentFileIpam = "fileIpam"
+	OptEnvironmentFileIPAM = "fileIpam"
 
 	// API server URL.
 	OptAPIServerURL      = "api-url"

@@ -36,7 +36,7 @@ var args = common.ArgumentList{
 		ValueMap: map[string]interface{}{
 			common.OptEnvironmentAzure:    0,
 			common.OptEnvironmentMAS:      0,
-			common.OptEnvironmentFileIpam: 0,
+			common.OptEnvironmentFileIPAM: 0,
 		},
 	},
 	{

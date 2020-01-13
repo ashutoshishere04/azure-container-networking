@@ -19,12 +19,12 @@ const (
 	defaultLinuxFilePath   = "/etc/kubernetes/interfaces.json"
 	defaultWindowsFilePath = `c:\k\interfaces.json`
 	windows                = "windows"
-	name                   = "MAS"
-	name2                  = "fileIpam"
+	masName                = "MAS"
+	fileIpamName           = "fileIpam"
 )
 
-// Microsoft Azure Stack IPAM configuration source.
-type masSource struct {
+// Microsoft Azure Stack and fileIpam IPAM configuration source.
+type fileIpamSource struct {
 	name       string
 	sink       addressConfigSink
 	fileLoaded bool
@@ -52,8 +52,8 @@ type IPAddress struct {
 	IsPrimary bool
 }
 
-// Creates the MAS source.
-func newMasSource(options map[string]interface{}) (*masSource, error) {
+// Creates the MAS fileIpamSource.
+func newFileIpamSource(options map[string]interface{}) (*fileIpamSource, error) {
 	var filePath string
 	if runtime.GOOS == windows {
 		filePath = defaultWindowsFilePath
@@ -64,33 +64,33 @@ func newMasSource(options map[string]interface{}) (*masSource, error) {
 	environment, _ := options[common.OptEnvironment].(string)
 
 	if environment == common.OptEnvironmentMAS {
-		return &masSource{
-			name: name,
+		return &fileIpamSource{
+			name: masName,
 			filePath: filePath,
 		}, nil
 	} else {
-		return &masSource{
-			name: name2,
+		return &fileIpamSource{
+			name: fileIpamName,
 			filePath: filePath,
 		}, nil
 	}
 }
 
 // Starts the MAS source.
-func (source *masSource) start(sink addressConfigSink) error {
+func (source *fileIpamSource) start(sink addressConfigSink) error {
 	source.sink = sink
 	return nil
 }
 
 // Stops the MAS source.
-func (source *masSource) stop() {
+func (source *fileIpamSource) stop() {
 	source.sink = nil
 }
 
 // Refreshes configuration.
-func (source *masSource) refresh() error {
+func (source *fileIpamSource) refresh() error {
 	if source == nil {
-		return errors.New("masSource is nil")
+		return errors.New("fileIpamSource is nil")
 	}
 
 	if source.fileLoaded {
