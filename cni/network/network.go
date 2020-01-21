@@ -13,10 +13,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-container-networking/aitelemetry"
 	"github.com/Azure/azure-container-networking/cni"
 	"github.com/Azure/azure-container-networking/cns"
 	"github.com/Azure/azure-container-networking/cns/cnsclient"
 	"github.com/Azure/azure-container-networking/common"
+	"github.com/Azure/azure-container-networking/iptables"
 	"github.com/Azure/azure-container-networking/log"
 	"github.com/Azure/azure-container-networking/network"
 	"github.com/Azure/azure-container-networking/platform"
@@ -60,6 +62,7 @@ type netPlugin struct {
 	*cni.Plugin
 	nm     network.NetworkManager
 	report *telemetry.CNIReport
+	tb     *telemetry.TelemetryBuffer
 }
 
 // snatConfiguration contains a bool that determines whether CNI enables snat on host and snat for dns
@@ -90,8 +93,9 @@ func NewPlugin(name string, config *common.PluginConfig) (*netPlugin, error) {
 	}, nil
 }
 
-func (plugin *netPlugin) SetCNIReport(report *telemetry.CNIReport) {
+func (plugin *netPlugin) SetCNIReport(report *telemetry.CNIReport, tb *telemetry.TelemetryBuffer) {
 	plugin.report = report
+	plugin.tb = tb
 }
 
 // Starts the plugin.
@@ -106,6 +110,7 @@ func (plugin *netPlugin) Start(config *common.PluginConfig) error {
 	// Log platform information.
 	log.Printf("[cni-net] Plugin %v version %v.", plugin.Name, plugin.Version)
 	log.Printf("[cni-net] Running on %v", platform.GetOSInfo())
+	platform.PrintDependencyPackageDetails()
 	common.LogNetworkInterfaces()
 
 	// Initialize network manager.
@@ -186,6 +191,29 @@ func (plugin *netPlugin) getPodInfo(args string) (string, string, error) {
 	return k8sPodName, k8sNamespace, nil
 }
 
+func SetCustomDimensions(cniMetric *telemetry.AIMetric, nwCfg *cni.NetworkConfig, err error) {
+	if cniMetric == nil {
+		log.Errorf("[CNI] Unable to set custom dimension. Report is nil")
+		return
+	}
+
+	if err != nil {
+		cniMetric.Metric.CustomDimensions[telemetry.StatusStr] = telemetry.FailedStr
+	} else {
+		cniMetric.Metric.CustomDimensions[telemetry.StatusStr] = telemetry.SucceededStr
+	}
+
+	if nwCfg != nil {
+		if nwCfg.MultiTenancy {
+			cniMetric.Metric.CustomDimensions[telemetry.CNIModeStr] = telemetry.MultiTenancyStr
+		} else {
+			cniMetric.Metric.CustomDimensions[telemetry.CNIModeStr] = telemetry.SingleTenancyStr
+		}
+
+		cniMetric.Metric.CustomDimensions[telemetry.CNINetworkModeStr] = nwCfg.Mode
+	}
+}
+
 func (plugin *netPlugin) setCNIReportDetails(nwCfg *cni.NetworkConfig, opType string, msg string) {
 	if nwCfg.MultiTenancy {
 		plugin.report.Context = "AzureCNIMultitenancy"
@@ -218,7 +246,10 @@ func (plugin *netPlugin) Add(args *cniSkel.CmdArgs) error {
 		enableInfraVnet  bool
 		enableSnatForDns bool
 		nwDNSInfo        network.DNSInfo
+		cniMetric        telemetry.AIMetric
 	)
+
+	startTime := time.Now()
 
 	log.Printf("[cni-net] Processing ADD command with args {ContainerID:%v Netns:%v IfName:%v Args:%v Path:%v StdinData:%s}.",
 		args.ContainerID, args.Netns, args.IfName, args.Args, args.Path, args.StdinData)
@@ -239,9 +270,19 @@ func (plugin *netPlugin) Add(args *cniSkel.CmdArgs) error {
 		}
 	}
 
+	iptables.DisableIPTableLock = nwCfg.DisableIPTableLock
 	plugin.setCNIReportDetails(nwCfg, CNI_ADD, "")
 
 	defer func() {
+		operationTimeMs := time.Since(startTime).Milliseconds()
+		cniMetric.Metric = aitelemetry.Metric{
+			Name:             telemetry.CNIAddTimeMetricStr,
+			Value:            float64(operationTimeMs),
+			CustomDimensions: make(map[string]string),
+		}
+		SetCustomDimensions(&cniMetric, nwCfg, err)
+		telemetry.SendCNIMetric(&cniMetric, plugin.tb)
+
 		// Add Interfaces to result.
 		if result == nil {
 			result = &cniTypesCurr.Result{}
@@ -252,9 +293,7 @@ func (plugin *netPlugin) Add(args *cniSkel.CmdArgs) error {
 		}
 
 		result.Interfaces = append(result.Interfaces, iface)
-
 		addSnatInterface(nwCfg, result)
-
 		// Convert result to the requested CNI version.
 		res, vererr := result.GetAsVersion(nwCfg.CNIVersion)
 		if vererr != nil {
@@ -275,6 +314,8 @@ func (plugin *netPlugin) Add(args *cniSkel.CmdArgs) error {
 	if err != nil {
 		return err
 	}
+
+	plugin.report.ContainerName = k8sPodName + ":" + k8sNamespace
 
 	if nwCfg.MultiTenancy {
 		// Initialize CNSClient
@@ -425,11 +466,12 @@ func (plugin *netPlugin) Add(args *cniSkel.CmdArgs) error {
 					Gateway: gateway,
 				},
 			},
-			BridgeName:       nwCfg.Bridge,
-			EnableSnatOnHost: nwCfg.EnableSnatOnHost,
-			DNS:              nwDNSInfo,
-			Policies:         policies,
-			NetNs:            args.Netns,
+			BridgeName:                    nwCfg.Bridge,
+			EnableSnatOnHost:              nwCfg.EnableSnatOnHost,
+			DNS:                           nwDNSInfo,
+			Policies:                      policies,
+			NetNs:                         args.Netns,
+			DisableHairpinOnHostInterface: nwCfg.DisableHairpinOnHostInterface,
 		}
 
 		nwInfo.Options = make(map[string]interface{})
@@ -587,6 +629,8 @@ func (plugin *netPlugin) Get(args *cniSkel.CmdArgs) error {
 
 	log.Printf("[cni-net] Read network configuration %+v.", nwCfg)
 
+	iptables.DisableIPTableLock = nwCfg.DisableIPTableLock
+
 	// Parse Pod arguments.
 	if k8sPodName, k8sNamespace, err = plugin.getPodInfo(args.Args); err != nil {
 		return err
@@ -650,7 +694,10 @@ func (plugin *netPlugin) Delete(args *cniSkel.CmdArgs) error {
 		networkId    string
 		nwInfo       *network.NetworkInfo
 		epInfo       *network.EndpointInfo
+		cniMetric    telemetry.AIMetric
 	)
+
+	startTime := time.Now()
 
 	log.Printf("[cni-net] Processing DEL command with args {ContainerID:%v Netns:%v IfName:%v Args:%v Path:%v, StdinData:%s}.",
 		args.ContainerID, args.Netns, args.IfName, args.Args, args.Path, args.StdinData)
@@ -665,6 +712,7 @@ func (plugin *netPlugin) Delete(args *cniSkel.CmdArgs) error {
 
 	log.Printf("[cni-net] Read network configuration %+v.", nwCfg)
 
+	iptables.DisableIPTableLock = nwCfg.DisableIPTableLock
 	plugin.setCNIReportDetails(nwCfg, CNI_DEL, "")
 
 	// Parse Pod arguments.
@@ -730,6 +778,15 @@ func (plugin *netPlugin) Delete(args *cniSkel.CmdArgs) error {
 	msg := fmt.Sprintf("CNI DEL succeeded : Released ip %+v podname %v namespace %v", nwCfg.Ipam.Address, k8sPodName, k8sNamespace)
 	plugin.setCNIReportDetails(nwCfg, CNI_DEL, msg)
 
+	operationTimeMs := time.Since(startTime).Milliseconds()
+	cniMetric.Metric = aitelemetry.Metric{
+		Name:             telemetry.CNIDelTimeMetricStr,
+		Value:            float64(operationTimeMs),
+		CustomDimensions: make(map[string]string),
+	}
+	SetCustomDimensions(&cniMetric, nwCfg, nil)
+	telemetry.SendCNIMetric(&cniMetric, plugin.tb)
+
 	return nil
 }
 
@@ -745,7 +802,10 @@ func (plugin *netPlugin) Update(args *cniSkel.CmdArgs) error {
 		cnsClient           *cnsclient.CNSClient
 		orchestratorContext []byte
 		targetNetworkConfig *cns.GetNetworkContainerResponse
+		cniMetric           telemetry.AIMetric
 	)
+
+	startTime := time.Now()
 
 	log.Printf("[cni-net] Processing UPDATE command with args {Netns:%v Args:%v Path:%v}.",
 		args.Netns, args.Args, args.Path)
@@ -758,9 +818,19 @@ func (plugin *netPlugin) Update(args *cniSkel.CmdArgs) error {
 
 	log.Printf("[cni-net] Read network configuration %+v.", nwCfg)
 
+	iptables.DisableIPTableLock = nwCfg.DisableIPTableLock
 	plugin.setCNIReportDetails(nwCfg, CNI_UPDATE, "")
 
 	defer func() {
+		operationTimeMs := time.Since(startTime).Milliseconds()
+		cniMetric.Metric = aitelemetry.Metric{
+			Name:             telemetry.CNIUpdateTimeMetricStr,
+			Value:            float64(operationTimeMs),
+			CustomDimensions: make(map[string]string),
+		}
+		SetCustomDimensions(&cniMetric, nwCfg, err)
+		telemetry.SendCNIMetric(&cniMetric, plugin.tb)
+
 		if result == nil {
 			result = &cniTypesCurr.Result{}
 		}

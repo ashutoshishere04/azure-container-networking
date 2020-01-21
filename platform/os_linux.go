@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -42,6 +43,12 @@ func GetOSInfo() string {
 	}
 
 	return string(info)
+}
+
+func GetProcessSupport() error {
+	cmd := fmt.Sprintf("ps -p %v -o comm=", os.Getpid())
+	_, err := ExecuteCommand(cmd)
+	return err
 }
 
 // GetLastRebootTime returns the last time the system rebooted.
@@ -126,4 +133,28 @@ func GetOSDetails() (map[string]string, error) {
 	}
 
 	return osInfoArr, nil
+}
+
+func GetProcessNameByID(pidstr string) (string, error) {
+	pidstr = strings.Trim(pidstr, "\n")
+	cmd := fmt.Sprintf("ps -p %s -o comm=", pidstr)
+	out, err := ExecuteCommand(cmd)
+	if err != nil {
+		log.Printf("GetProcessNameByID returned error: %v", err)
+		return "", err
+	}
+
+	out = strings.Trim(out, "\n")
+	out = strings.TrimSpace(out)
+
+	return out, nil
+}
+
+func PrintDependencyPackageDetails() {
+	out, err := ExecuteCommand("iptables --version")
+	out = strings.TrimSuffix(out, "\n")
+	log.Printf("[cni-net] iptable version:%s, err:%v", out, err)
+	out, err = ExecuteCommand("ebtables --version")
+	out = strings.TrimSuffix(out, "\n")
+	log.Printf("[cni-net] ebtable version %s, err:%v", out, err)
 }

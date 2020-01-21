@@ -32,6 +32,7 @@ type IptEntry struct {
 	Chain                 string
 	Flag                  string
 	LockWaitTimeInSeconds string
+	IsJumpEntry           bool
 	Specs                 []string
 }
 
@@ -97,32 +98,6 @@ func (iptMgr *IptablesManager) InitNpmChains() error {
 		iptMgr.OperationFlag = util.IptablesInsertionFlag
 		if _, err = iptMgr.Run(entry); err != nil {
 			log.Printf("Error: failed to add default allow CONNECTED/RELATED rule to AZURE-NPM chain.")
-			return err
-		}
-	}
-
-	// Create AZURE-NPM-KUBE-SYSTEM chain.
-	if err := iptMgr.AddChain(util.IptablesAzureKubeSystemChain); err != nil {
-		return err
-	}
-
-	// Append AZURE-NPM-KUBE-SYSTEM chain to AZURE-NPM chain.
-	entry = &IptEntry{
-		Chain: util.IptablesAzureChain,
-		Specs: []string{
-			util.IptablesJumpFlag,
-			util.IptablesAzureKubeSystemChain,
-		},
-	}
-	exists, err = iptMgr.Exists(entry)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		iptMgr.OperationFlag = util.IptablesAppendFlag
-		if _, err = iptMgr.Run(entry); err != nil {
-			log.Errorf("Error: failed to add AZURE-NPM-KUBE-SYSTEM chain to AZURE-NPM chain.")
 			return err
 		}
 	}
@@ -326,7 +301,11 @@ func (iptMgr *IptablesManager) Add(entry *IptEntry) error {
 		return nil
 	}
 
-	iptMgr.OperationFlag = util.IptablesAppendFlag
+	if entry.IsJumpEntry {
+		iptMgr.OperationFlag = util.IptablesAppendFlag
+	} else {
+		iptMgr.OperationFlag = util.IptablesInsertionFlag
+	}
 	if _, err := iptMgr.Run(entry); err != nil {
 		log.Errorf("Error: failed to create iptables rules.")
 		return err
