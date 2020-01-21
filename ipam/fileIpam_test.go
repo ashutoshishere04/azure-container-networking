@@ -9,7 +9,7 @@ import (
 
 func TestNewMasSource(t *testing.T) {
 	options := make(map[string]interface{})
-	mas, _ := newMasSource(options)
+	mas, _ := newFileIpamSource(options)
 
 	if runtime.GOOS == windows {
 		if mas.filePath != defaultWindowsFilePath {
@@ -27,7 +27,7 @@ func TestNewMasSource(t *testing.T) {
 
 func TestNewFileIpamSource(t *testing.T) {
 	options := make(map[string]interface{})
-	fileIpam, _ := newMasSource(options)
+	fileIpam, _ := newFileIpamSource(options)
 
 	if runtime.GOOS == windows {
 		if fileIpam.filePath != defaultWindowsFilePath {
