@@ -20,7 +20,7 @@ func TestNewMasSource(t *testing.T) {
 			t.Fatalf("default file path set incorrectly")
 		}
 	}
-	if mas.name != "MAS" {
+	if mas.masName != "MAS" {
 		t.Fatalf("mas source Name incorrect")
 	}
 }
@@ -38,7 +38,7 @@ func TestNewFileIpamSource(t *testing.T) {
 			t.Fatalf("default file path set incorrectly")
 		}
 	}
-	if fileIpam.name != "fileIpam" {
+	if fileIpam.fileIpamName != "fileIpam" {
 		t.Fatalf("fileIpam source Name incorrect")
 	}
 }
