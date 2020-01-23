@@ -5,10 +5,13 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
+
+	"github.com/Azure/azure-container-networking/common"
 )
 
 func TestNewMasSource(t *testing.T) {
 	options := make(map[string]interface{})
+	options[common.OptEnvironment] = common.OptEnvironmentMAS
 	mas, _ := newFileIpamSource(options)
 
 	if runtime.GOOS == windows {
@@ -27,6 +30,7 @@ func TestNewMasSource(t *testing.T) {
 
 func TestNewFileIpamSource(t *testing.T) {
 	options := make(map[string]interface{})
+	options[common.OptEnvironment] = common.OptEnvironmentFileIPAM	
 	fileIpam, _ := newFileIpamSource(options)
 
 	if runtime.GOOS == windows {
