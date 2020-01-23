@@ -23,14 +23,14 @@ func TestNewMasSource(t *testing.T) {
 			t.Fatalf("default file path set incorrectly")
 		}
 	}
-	if mas.masName != "MAS" {
+	if mas.name != "MAS" {
 		t.Fatalf("mas source Name incorrect")
 	}
 }
 
 func TestNewFileIpamSource(t *testing.T) {
 	options := make(map[string]interface{})
-	options[common.OptEnvironment] = common.OptEnvironmentFileIPAM	
+	options[common.OptEnvironment] = common.OptEnvironmentFileIPAM
 	fileIpam, _ := newFileIpamSource(options)
 
 	if runtime.GOOS == windows {
@@ -42,7 +42,7 @@ func TestNewFileIpamSource(t *testing.T) {
 			t.Fatalf("default file path set incorrectly")
 		}
 	}
-	if fileIpam.fileIpamName != "fileIpam" {
+	if fileIpam.name != "fileIpam" {
 		t.Fatalf("fileIpam source Name incorrect")
 	}
 }
