@@ -55,6 +55,7 @@ type IPAddress struct {
 // Creates the MAS/fileIPAM source.
 func newFileIpamSource(options map[string]interface{}) (*fileIpamSource, error) {
 	var filePath string
+	var name string
 	if runtime.GOOS == windows {
 		filePath = defaultWindowsFilePath
 	} else {
@@ -62,18 +63,16 @@ func newFileIpamSource(options map[string]interface{}) (*fileIpamSource, error) 
 	}
 
 	environment, _ := options[common.OptEnvironment].(string)
-
 	if environment == common.OptEnvironmentMAS {
-		return &fileIpamSource{
-			name: masName,
-			filePath: filePath,
-		}, nil
+		name = masName
 	} else {
-		return &fileIpamSource{
-			name: fileIpamName,
-			filePath: filePath,
-		}, nil
+		name = fileIpamName
 	}
+
+	return &fileIpamSource{
+		name: name,
+		filePath: filePath,
+	}, nil
 }
 
 // Starts the MAS source.
