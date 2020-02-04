@@ -56,6 +56,7 @@ type IPAddress struct {
 func newFileIpamSource(options map[string]interface{}) (*fileIpamSource, error) {
 	var filePath string
 	var name string
+	
 	if runtime.GOOS == windows {
 		filePath = defaultWindowsFilePath
 	} else {
