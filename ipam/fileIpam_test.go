@@ -30,7 +30,7 @@ func TestNewMasSource(t *testing.T) {
 
 func TestNewFileIpamSource(t *testing.T) {
 	options := make(map[string]interface{})
-	options[common.OptEnvironment] = common.OptEnvironmentFileIPAM
+	options[common.OptEnvironment] = common.OptEnvironmentFileIpam
 	fileIpam, _ := newFileIpamSource(options)
 
 	if runtime.GOOS == windows {
@@ -188,11 +188,11 @@ func TestPopulateAddressSpaceMultipleSDNInterfaces(t *testing.T) {
 				IsPrimary:  true,
 				IPSubnets: []IPSubnet{
 					{
-						Prefix: "0.0.0.0/24",
+						Prefix:      "0.0.0.0/24",
 						IPAddresses: []IPAddress{},
 					},
 					{
-						Prefix: "0.1.0.0/24",
+						Prefix:      "0.1.0.0/24",
 						IPAddresses: []IPAddress{},
 					},
 					{
@@ -205,22 +205,22 @@ func TestPopulateAddressSpaceMultipleSDNInterfaces(t *testing.T) {
 			},
 			{
 				MacAddress: "111111111111",
-				IsPrimary: false,
+				IsPrimary:  false,
 				IPSubnets: []IPSubnet{
 					{
-						Prefix: "1.0.0.0/24",
+						Prefix:      "1.0.0.0/24",
 						IPAddresses: []IPAddress{},
 					},
 					{
-						Prefix: "1.1.0.0/24",
+						Prefix:      "1.1.0.0/24",
 						IPAddresses: []IPAddress{},
 					},
 				},
 			},
 			{
 				MacAddress: "222222222222",
-				IsPrimary: false,
-				IPSubnets: []IPSubnet{},
+				IsPrimary:  false,
+				IPSubnets:  []IPSubnet{},
 			},
 		},
 	}

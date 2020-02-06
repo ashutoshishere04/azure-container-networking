@@ -192,7 +192,7 @@ func (am *addressManager) StartSource(options map[string]interface{}) error {
 	case common.OptEnvironmentMAS:
 		am.source, err = newFileIpamSource(options)
 
-	case common.OptEnvironmentFileIPAM :
+	case common.OptEnvironmentFileIpam:
 		am.source, err = newFileIpamSource(options)
 
 	case "null":
