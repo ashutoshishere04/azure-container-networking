@@ -19,8 +19,6 @@ const (
 	defaultLinuxFilePath   = "/etc/kubernetes/interfaces.json"
 	defaultWindowsFilePath = `c:\k\interfaces.json`
 	windows                = "windows"
-	masName                = "MAS"
-	fileIpamName           = "fileIpam"
 )
 
 // Microsoft Azure Stack IPAM configuration source.
@@ -56,20 +54,14 @@ type IPAddress struct {
 func newFileIpamSource(options map[string]interface{}) (*fileIpamSource, error) {
 	var filePath string
 	var name string
-	
+
 	if runtime.GOOS == windows {
 		filePath = defaultWindowsFilePath
 	} else {
 		filePath = defaultLinuxFilePath
 	}
 
-	environment, _ := options[common.OptEnvironment].(string)
-	if environment == common.OptEnvironmentMAS {
-		name = masName
-	} else {
-		name = fileIpamName
-	}
-
+	name = options[common.OptEnvironment].(string)
 	return &fileIpamSource{
 		name:     name,
 		filePath: filePath,

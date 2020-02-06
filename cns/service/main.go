@@ -47,7 +47,7 @@ var args = acn.ArgumentList{
 		ValueMap: map[string]interface{}{
 			acn.OptEnvironmentAzure:    0,
 			acn.OptEnvironmentMAS:      0,
-			acn.OptEnvironmentFileIPAM: 0,
+			acn.OptEnvironmentFileIpam: 0,
 		},
 	},
 
