@@ -52,7 +52,7 @@ type IPAddress struct {
 	IsPrimary bool
 }
 
-// Creates the MAS/fileIPAM source.
+// Creates the MAS/fileIpam source.
 func newFileIpamSource(options map[string]interface{}) (*fileIpamSource, error) {
 	var filePath string
 	var name string
@@ -70,7 +70,7 @@ func newFileIpamSource(options map[string]interface{}) (*fileIpamSource, error) 
 	}
 
 	return &fileIpamSource{
-		name: name,
+		name:     name,
 		filePath: filePath,
 	}, nil
 }
